@@ -1,14 +1,21 @@
-# realtime.py
-import cv2
+# gradcam.py
 import torch
 from torchvision import models, transforms
 from torch.nn import functional as F
+from PIL import Image
+import matplotlib.pyplot as plt
+import cv2
 import numpy as np
 
 # ---------------------------
-# Paths & Device
+# Paths
 # ---------------------------
-model_path = "model/asd_classifier_cnn.pth"
+model_path = "model/asd_classifier_cnn.pth"  # Your trained model path
+image_path = "data/Images/TSImages/sample_image.png"  # Replace with an actual image in your dataset
+
+# ---------------------------
+# Device
+# ---------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ---------------------------
@@ -57,56 +64,34 @@ class GradCAM:
         self.model.zero_grad()
         loss.backward()
 
+        # Compute Grad-CAM
         weights = torch.mean(self.gradients, dim=(1,2))
         cam = torch.sum(weights[:, None, None] * self.activations, dim=0)
         cam = F.relu(cam)
         cam = cam.cpu().numpy()
-        cam = np.nan_to_num(cam)
-        cam = np.squeeze(cam)
-        cam = (cam - np.min(cam)) / (np.max(cam) - np.min(cam) + 1e-8)
+        cam = np.nan_to_num(cam)      # Remove NaNs
+        cam = np.squeeze(cam)         # Ensure 2D
+        cam = (cam - np.min(cam)) / (np.max(cam) - np.min(cam) + 1e-8)  # Normalize 0-1
         cam = cv2.resize(cam, (224, 224))
-        return cam, class_idx
+        return cam
 
 # ---------------------------
-# Initialize Grad-CAM
+# Run Grad-CAM
 # ---------------------------
+img = Image.open(image_path).convert('RGB')
+input_tensor = transform(img).unsqueeze(0).to(device)
+
 grad_cam = GradCAM(model, model.layer4[-1])
-class_names = ['Non-ASD', 'ASD']
+cam = grad_cam(input_tensor)
 
-# ---------------------------
-# Start Webcam
-# ---------------------------
-cap = cv2.VideoCapture(0)
+# Overlay CAM on original image
+img_np = np.array(img.resize((224, 224)))
+cam_uint8 = np.uint8(255 * cam)
+heatmap = cv2.applyColorMap(cam_uint8, cv2.COLORMAP_JET)
+overlay = cv2.addWeighted(img_np, 0.6, heatmap, 0.4, 0)
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    # Convert BGR to RGB and preprocess
-    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    img_resized = cv2.resize(img_rgb, (224, 224))
-    input_tensor = transform(img_resized).unsqueeze(0).to(device)
-
-    # Get Grad-CAM and prediction
-    cam, class_idx = grad_cam(input_tensor)
-    label = class_names[class_idx]
-
-    # Overlay heatmap
-    cam_uint8 = np.uint8(255 * cam)
-    heatmap = cv2.applyColorMap(cam_uint8, cv2.COLORMAP_JET)
-    overlay = cv2.addWeighted(cv2.resize(frame, (224, 224)), 0.6, heatmap, 0.4, 0)
-
-    # Put label text
-    cv2.putText(overlay, f'Pred: {label}', (10, 20),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-
-    # Show
-    cv2.imshow("ASD Grad-CAM Realtime", overlay)
-
-    # Quit on 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+# Display
+plt.figure(figsize=(8, 8))
+plt.imshow(overlay)
+plt.axis('off')
+plt.show()
