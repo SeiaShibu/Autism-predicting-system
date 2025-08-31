@@ -1,11 +1,11 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
 from torchvision import models, transforms
 from sklearn.metrics import confusion_matrix, classification_report
-from notebooks.dataset import EyeTrackingDataset
-from data import EyeTrackingDataset, stratified_split
+from notebooks.dataset import EyeTrackingDataset, stratified_split
 
 
 # Transformations
@@ -63,7 +63,7 @@ class_counts = np.bincount(labels_np)
 class_weights = 1. / class_counts
 weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
 criterion = nn.CrossEntropyLoss(weight=weights)
-optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-5)
+optimizer = optim.AdamW(model.parameters(), lr=0.0005, weight_decay=1e-5)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
 
 # Training loop
@@ -114,7 +114,10 @@ for epoch in range(num_epochs):
     if val_loss < best_loss:
         best_loss = val_loss
         trigger_times = 0
-        torch.save(model.state_dict(), 'best_model.pth')
+        torch.save(model.state_dict(), 'asd_classifier_cnn.pth')
+        print("✅ Model saved as asd_classifier_cnn.pth")
+
+        #torch.save(model.state_dict(), 'best_model.pth')
     else:
         trigger_times += 1
         if trigger_times >= patience:
