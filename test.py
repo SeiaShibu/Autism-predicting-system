@@ -8,7 +8,7 @@ from torchvision import models
 # Load model
 base_model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 model = CustomResNet(base_model)
-model.load_state_dict(torch.load('best_model.pth'))
+model.load_state_dict(torch.load('asd_classifier_cnn.pth'))
 model.eval()
 
 # Device

@@ -9,6 +9,8 @@ app = Flask(__name__)
 # Load the trained CNN model (ResNet18)
 model = models.resnet18(pretrained=True)  # Load pre-trained weights
 model.fc = torch.nn.Linear(model.fc.in_features, 2)  # Modify the final layer for binary classification (ASD vs Non-ASD)
+print("Looking for model at:", MODEL_PATH)
+print("Exists?", os.path.exists(MODEL_PATH))
 model.load_state_dict(torch.load('model/asd_classifier_cnn.pth'))  # Load your trained model weights
 model.eval()  # Set the model to evaluation mode (not training)
 

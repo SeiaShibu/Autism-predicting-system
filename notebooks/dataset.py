@@ -36,7 +36,7 @@ class EyeTrackingDataset(Dataset):
 
         return img, label
     
-    def stratified_split(dataset, test_size=0.2):
+def stratified_split(dataset, test_size=0.2):
         labels = np.array(dataset.labels)
         splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=42)
         for train_idx, val_idx in splitter.split(np.zeros(len(labels)), labels):
